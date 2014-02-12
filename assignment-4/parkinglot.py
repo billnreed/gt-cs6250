@@ -96,21 +96,21 @@ class ParkingLotTopo(Topo):
         # for N = 1
         # TODO: Replace the template code to create a parking lot topology for any arbitrary N (>= 1)
         # Begin: Template code
-        self.hosts = []
-        self.switches = []
+        self.plHosts = []
+        self.plSwitches = []
         for i in range(0, n):
             switch = self.addSwitch('s' + str(i))
-            self.switches.append(switch)
+            self.plSwitches.append(switch)
             host = self.addHost('h' + str(i), **hconfig)
-            self.hosts.append(host)
+            self.plHosts.append(host)
             self.addLink(host, switch, port1=0, port2=hostlink, **lconfig)
 
         # Wire up receiver
-        self.addLink(receiver, self.switches[0], port1=0, port2=uplink, **lconfig)
+        self.addLink(receiver, self.plSwitches[0], port1=0, port2=uplink, **lconfig)
 
-        for i in range(0, len(self.switches)-1):
-            s1 = self.switches[i]
-            s2 = self.switches[i+1]
+        for i in range(0, len(self.plSwitches)-1):
+            s1 = self.plSwitches[i]
+            s2 = self.plSwitches[i+1]
             self.addLink(s1, s2, port1=downlink, port2=uplink, **lconfig)
 
 def waitListening(client, server, port):
@@ -158,18 +158,17 @@ def run_parkinglot_expt(net, n):
     receiver.cmd('iperf -s -p', port,
               '> %s/iperf_server.txt' % args.dir, '&')
 
-    waitListening(sender1, receiver, port)
-
     # TODO: start the sender iperf processes and wait for the flows to finish
     # Hint: Use getNodeByName() to get a handle on each sender.
     # Hint: Use sendCmd() and waitOutput() to start iperf and wait for them to finish
     # iperf command to start flow: 'iperf -c %s -p %s -t %d -i 1 -yc > %s/iperf_%s.txt' % (receiver.IP(), 5001, seconds, args.dir, node_name)
     # Hint (not important): You may use progress(t) to track your experiment progress
-    iperfCommand = 'iperf -c %s -p %s -t %d -i 1 -yc > %s/iperf_%s.txt' % (receiver.IP(), 5001, seconds, args.dir, node_name)
-    for i in range(0, len(self.hosts)):
-        net.getNodeByName(self.hosts[i]).sendCmd(iperfCommand)
-    for i in range(0, len(self.hosts)):
-        host = net.getNodeByName(self.hosts[i]).waitOutput()
+    for i in range(0, args.n):
+        host = net.getNodeByName('h' + str(i))
+        host.sendCmd('iperf -c %s -p %s -t %d -i 1 -yc > %s/iperf_%s.txt' % (receiver.IP(), port, seconds, args.dir, 'h'+str(i)))
+        #waitListening(host, receiver, port)
+    for i in range(0, args.n):
+        net.getNodeByName('h' + str(i)).waitOutput()
 
     receiver.cmd('kill %iperf')
 
